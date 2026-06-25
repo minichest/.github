@@ -8,7 +8,7 @@ on:
 jobs:
   post-to-x:
     runs-on: ubuntu-latest
-    environment: aezi
+    # ❌ The "environment: aezi" line has been removed so it reads your global Repository Secrets!
     steps:
       - name: Checkout Repository Code
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
             }')
 
           # 4. Fire the modern GraphQL query payload to Buffer's active live API endpoint
-          curl -X POST "https://api.buffer.com/" \
+          curl -X POST "https://buffer.com" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD"
