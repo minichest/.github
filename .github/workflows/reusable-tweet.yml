@@ -40,7 +40,7 @@ jobs:
             }')
 
           # 4. Fire the modern GraphQL query payload to Buffer's active live API endpoint
-          curl -X POST "https://buffer.com" \
+          curl -X POST "https://api.buffer.com" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD"
