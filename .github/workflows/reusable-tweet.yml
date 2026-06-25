@@ -1,7 +1,13 @@
 name: Auto Post to X via Buffer
 
 on:
-  workflow_call:      # Maintains background accessibility for your other repositories
+  workflow_call:
+    # 🔓 Unlocks the secret gate when called reusably from other repositories!
+    secrets:
+      BUFFER_ACCESS_TOKEN:
+        required: true
+      BUFFER_PROFILE_ID:
+        required: true
     inputs:
       commit_msg:
         required: true
@@ -9,19 +15,19 @@ on:
       commit_url:
         required: true
         type: string
-  push:               # Triggers execution logs right here when you push changes locally
+  push:
     branches:
       - main
 
 jobs:
   send-tweet:
     runs-on: ubuntu-latest
-    # ❌ The broken job-level secrets line is removed to stop the compiler crash!
     steps:
       - name: Format and Post to X via Buffer
         env:
-          BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
+          # 💡 Uses the passed workflow secrets if called from another repo, otherwise falls back to local repository secrets!
+          BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN || secrets.BUFFER_ACCESS_TOKEN }}
+          CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID || secrets.BUFFER_PROFILE_ID }}
           COMMIT_MSG: ${{ inputs.commit_msg || github.event.head_commit.message }}
           COMMIT_URL: ${{ inputs.commit_url || github.event.head_commit.url }}
         run: |
@@ -51,8 +57,8 @@ jobs:
               }
             }')
 
-          # 4. Save and echo the full raw server response directly to the GitHub screen log
-          RESPONSE=$(curl -s -X POST "https://buffer.com" \
+          # 4. Fire the modern GraphQL query payload to Buffer's active live API endpoint URL
+          RESPONSE=$(curl -s -X POST "https://api.buffer.com/" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD")
