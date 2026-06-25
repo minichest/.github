@@ -19,27 +19,41 @@ jobs:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
           CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
         run: |
-          # 1. Grab only the very first line of the commit message cleanly
           FIRST_LINE=$(echo "${{ inputs.commit_msg }}" | head -n 1)
 
-          # 2. Assemble the full text template natively with real line breaks
           read -r -d '' FULL_TEXT << EOM
           🚀 Code Update: '${FIRST_LINE}'
 
           Check it out: ${{ inputs.commit_url }}
           EOM
 
-          # 3. Construct a valid GraphQL payload matching Buffer's schema rules exactly
           PAYLOAD=$(jq -n \
             --arg chan "$CHANNEL_ID" \
             --arg text "$FULL_TEXT" \
             '{
-              query: "mutation CreatePost($chan: ChannelId!, $text: String!) { createPost(input: { channelId: $chan, text: $text, schedulingType: automatic, mode: addToQueue }) { ... on PostActionSuccess { post { id } } ... on MutationError { message } } }", 
-              variables: { chan: $chan, text: $text }
+              query: "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { ... on PostActionSuccess { post { id } } ... on MutationError { message } } }",
+              variables: {
+                input: {
+                  channelId: $chan,
+                  text: $text,
+                  schedulingType: "automatic",
+                  mode: "addToQueue"
+                }
+              }
             }')
 
-          # 4. Fire the modern GraphQL query payload to Buffer's active live API endpoint URL
-          curl -X POST "https://api.buffer.com/" \
+          # 💡 Saving the raw response to a variable instead of dropping it silently
+          RESPONSE=$(curl -s -X POST "https://api.buffer.com/" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
-            -d "$PAYLOAD"
+            -d "$PAYLOAD")
+
+          # 📢 Printing the exact text directly onto your GitHub console log!
+          echo "==== BUFFER RESPONSE DATA ===="
+          echo "$RESPONSE"
+          echo "=============================="
+
+          # Gracefully exits with an error code if the payload failed
+          if [[ "$RESPONSE" == *'"errors"'* || "$RESPONSE" == *'"MutationError"'* ]]; then
+            exit 1
+          fi
