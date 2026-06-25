@@ -1,7 +1,7 @@
-name: Reusable Buffer Tweet
+name: Auto Post to X via Buffer
 
 on:
-  workflow_call:
+  workflow_call:      # Maintains background accessibility for your other repositories
     inputs:
       commit_msg:
         required: true
@@ -9,15 +9,14 @@ on:
       commit_url:
         required: true
         type: string
-  push:
+  push:               # Triggers execution logs right here when you push changes locally
     branches:
       - main
 
 jobs:
   send-tweet:
     runs-on: ubuntu-latest
-    # 🏁 This tells GitHub to allow the workflow to inherit your repository secrets!
-    secrets: inherit
+    # ❌ The broken job-level secrets line is removed to stop the compiler crash!
     steps:
       - name: Format and Post to X via Buffer
         env:
@@ -36,7 +35,7 @@ jobs:
           Check it out: ${COMMIT_URL}
           EOM
 
-          # 3. Construct the GraphQL validation payload
+          # 3. Construct a standard GraphQL payload with variables mapping
           PAYLOAD=$(jq -n \
             --arg chan "$CHANNEL_ID" \
             --arg text "$FULL_TEXT" \
@@ -52,7 +51,7 @@ jobs:
               }
             }')
 
-          # 4. Fire to Buffer and capture the real text response block
+          # 4. Save and echo the full raw server response directly to the GitHub screen log
           RESPONSE=$(curl -s -X POST "https://buffer.com" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
@@ -62,7 +61,7 @@ jobs:
           echo "$RESPONSE"
           echo "=============================="
 
-          # 5. Gracefully exits with an error code if the payload failed
+          # 5. Explicitly force a script runner crash if Buffer replies with error definitions
           if [[ -z "$RESPONSE" || "$RESPONSE" == *'"errors"'* || "$RESPONSE" == *'"MutationError"'* ]]; then
             exit 1
           fi
