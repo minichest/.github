@@ -16,12 +16,13 @@ on:
 jobs:
   send-tweet:
     runs-on: ubuntu-latest
+    # 🏁 This tells GitHub to allow the workflow to inherit your repository secrets!
+    secrets: inherit
     steps:
       - name: Format and Post to X via Buffer
         env:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
           CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
-          # 💡 Uses the passed input variables if available, otherwise falls back to the local git event context strings!
           COMMIT_MSG: ${{ inputs.commit_msg || github.event.head_commit.message }}
           COMMIT_URL: ${{ inputs.commit_url || github.event.head_commit.url }}
         run: |
@@ -52,17 +53,16 @@ jobs:
             }')
 
           # 4. Fire to Buffer and capture the real text response block
-          RESPONSE=$(curl -s -X POST "https://api.buffer.com/" \
+          RESPONSE=$(curl -s -X POST "https://buffer.com" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD")
 
-          # 📢 This forces the log console to show us the exact error!
           echo "==== BUFFER RESPONSE DATA ===="
           echo "$RESPONSE"
           echo "=============================="
 
           # 5. Gracefully exits with an error code if the payload failed
-          if [[ "$RESPONSE" == *'"errors"'* || "$RESPONSE" == *'"MutationError"'* ]]; then
+          if [[ -z "$RESPONSE" || "$RESPONSE" == *'"errors"'* || "$RESPONSE" == *'"MutationError"'* ]]; then
             exit 1
           fi
