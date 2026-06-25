@@ -59,7 +59,7 @@ jobs:
                   "channelId": channel_id,
                   "text": full_text,
                   "schedulingType": "automatic",
-                  "mode": "addToQueue"
+                  "mode": "shareNow"
               }
           }
 
