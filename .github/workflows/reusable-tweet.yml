@@ -1,0 +1,42 @@
+name: Global Auto Tweet on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  post-to-x:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Format and Post to X via Buffer
+        env:
+          BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          # 💡 Dynamically generates the link for ANY repo you own!
+          COMMIT_URL: "https://github.com{{ github.repository }}/commit/${{ github.sha }}"
+        run: |
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
+
+          read -r -d '' FULL_TEXT << EOM
+          🚀 Code Update: '${FIRST_LINE}'
+
+          Check it out: ${COMMIT_URL}
+          EOM
+
+          PAYLOAD=$(jq -n \
+            --arg chan "$CHANNEL_ID" \
+            --arg text "$FULL_TEXT" \
+            '{
+              query: "mutation CreatePost($chan: ChannelId!, $text: String!) { createPost(input: { channelId: $chan, text: $text, schedulingType: automatic, mode: shareNow }) { ... on PostActionSuccess { post { id } } ... on MutationError { message } } }", 
+              variables: { chan: $chan, text: $text }
+            }')
+
+          curl -X POST https://buffer.com \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $BUFFER_TOKEN" \
+            -d "$PAYLOAD"
