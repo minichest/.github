@@ -1,4 +1,4 @@
-name: Global Auto Tweet on Push
+name: Auto Post to X via Buffer
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   post-to-x:
     runs-on: ubuntu-latest
+    environment: aezi
     steps:
       - name: Checkout Repository Code
         uses: actions/checkout@v4
@@ -17,17 +18,19 @@ jobs:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
           CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
-          # 💡 Dynamically generates the link for ANY repo you own!
-          COMMIT_URL: "https://github.com{{ github.repository }}/commit/${{ github.sha }}"
+          COMMIT_URL: ${{ github.event.head_commit.url }}
         run: |
+          # 1. Grab only the very first line of the commit message cleanly
           FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
 
+          # 2. Assemble the full text formatting natively with real line breaks
           read -r -d '' FULL_TEXT << EOM
           🚀 Code Update: '${FIRST_LINE}'
 
           Check it out: ${COMMIT_URL}
           EOM
 
+          # 3. Construct the GraphQL validation payload
           PAYLOAD=$(jq -n \
             --arg chan "$CHANNEL_ID" \
             --arg text "$FULL_TEXT" \
@@ -36,6 +39,7 @@ jobs:
               variables: { chan: $chan, text: $text }
             }')
 
+          # 4. Fire to the correct API endpoint (api.buffer.com)
           curl -X POST https://buffer.com \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
