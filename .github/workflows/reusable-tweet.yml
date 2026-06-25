@@ -1,45 +1,46 @@
-name: Reusable Buffer Tweet
+name: Auto Tweet on Push
 
 on:
-  workflow_call:
-    inputs:
-      commit_msg:
-        required: true
-        type: string
-      commit_url:
-        required: true
-        type: string
+  push:
+    branches:
+      - main
 
 jobs:
-  send-tweet:
+  post-to-x:
     runs-on: ubuntu-latest
+    environment: aezi
     steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
       - name: Format and Post to X via Buffer
         env:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
           CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
         run: |
           # 1. Grab only the very first line of the commit message cleanly
-          FIRST_LINE=$(echo "${{ inputs.commit_msg }}" | head -n 1)
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
 
-          # 2. Assemble the full text formatting natively with real line breaks
+          # 2. Assemble the full text template natively with real line breaks
           read -r -d '' FULL_TEXT << EOM
           🚀 Code Update: '${FIRST_LINE}'
 
-          Check it out: ${{ inputs.commit_url }}
+          Check it out: ${COMMIT_URL}
           EOM
 
-          # 3. Construct the GraphQL validation payload
+          # 3. Construct a valid GraphQL payload utilizing the correct "sharePostNow" action mutation
           PAYLOAD=$(jq -n \
             --arg chan "$CHANNEL_ID" \
             --arg text "$FULL_TEXT" \
             '{
-              query: "mutation CreatePost($chan: ChannelId!, $text: String!) { createPost(input: { channelId: $chan, text: $text, schedulingType: automatic, mode: shareNow }) { ... on PostActionSuccess { post { id } } ... on MutationError { message } } }", 
+              query: "mutation SharePostNow($chan: ChannelId!, $text: String!) { sharePostNow(input: { channelId: $chan, text: $text }) { ... on PostActionSuccess { post { id } } ... on MutationError { message } } }", 
               variables: { chan: $chan, text: $text }
             }')
 
-          # 4. Fire to the CORRECT endpoint (Notice the api. prefix and trailing slash!)
-          curl -X POST "https://buffer.com" \
+          # 4. Fire the modern GraphQL query payload to Buffer's active live API endpoint
+          curl -X POST "https://api.buffer.com/" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD"
