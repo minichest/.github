@@ -1,35 +1,23 @@
-name: Auto Post to X via Buffer
+name: Auto Post to X via Buffer XIV
 
 on:
-  workflow_call:
-    # 🔓 Unlocks the secret gate when called reusably from other repositories!
-    secrets:
-      BUFFER_ACCESS_TOKEN:
-        required: true
-      BUFFER_PROFILE_ID:
-        required: true
-    inputs:
-      commit_msg:
-        required: true
-        type: string
-      commit_url:
-        required: true
-        type: string
   push:
     branches:
       - main
 
 jobs:
-  send-tweet:
+  post-to-x:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
       - name: Format and Post to X via Buffer
         env:
-          # 💡 Uses the passed workflow secrets if called from another repo, otherwise falls back to local repository secrets!
-          BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN || secrets.BUFFER_ACCESS_TOKEN }}
-          CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID || secrets.BUFFER_PROFILE_ID }}
-          COMMIT_MSG: ${{ inputs.commit_msg || github.event.head_commit.message }}
-          COMMIT_URL: ${{ inputs.commit_url || github.event.head_commit.url }}
+          BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
         run: |
           # 1. Grab only the very first line of the commit message cleanly
           FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
