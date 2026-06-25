@@ -39,8 +39,8 @@ jobs:
               variables: { chan: $chan, text: $text }
             }')
 
-          # 4. Fire to the correct API endpoint (api.buffer.com)
-          curl -X POST https://buffer.com \
+          # 4. Fire to the CORRECT endpoint (Notice the api. prefix and trailing slash!)
+          curl -X POST "https://buffer.com" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD"
