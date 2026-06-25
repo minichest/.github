@@ -1,7 +1,7 @@
 name: Reusable Buffer Tweet
 
 on:
-  workflow_call:
+  workflow_call:      # 📞 Keeps it available for your other repositories to use
     inputs:
       commit_msg:
         required: true
@@ -9,6 +9,9 @@ on:
       commit_url:
         required: true
         type: string
+  push:               # ⚡ FORCES GitHub Actions to run right here when you push code!
+    branches:
+      - main
 
 jobs:
   send-tweet:
