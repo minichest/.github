@@ -1,7 +1,7 @@
 name: Reusable Buffer Tweet
 
 on:
-  workflow_call:      # 📞 Keeps it available for your other repositories to use
+  workflow_call:
     inputs:
       commit_msg:
         required: true
@@ -9,7 +9,7 @@ on:
       commit_url:
         required: true
         type: string
-  push:               # ⚡ FORCES GitHub Actions to run right here when you push code!
+  push:
     branches:
       - main
 
@@ -21,15 +21,21 @@ jobs:
         env:
           BUFFER_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
           CHANNEL_ID: ${{ secrets.BUFFER_PROFILE_ID }}
+          # 💡 Uses the passed input variables if available, otherwise falls back to the local git event context strings!
+          COMMIT_MSG: ${{ inputs.commit_msg || github.event.head_commit.message }}
+          COMMIT_URL: ${{ inputs.commit_url || github.event.head_commit.url }}
         run: |
-          FIRST_LINE=$(echo "${{ inputs.commit_msg }}" | head -n 1)
+          # 1. Grab only the very first line of the commit message cleanly
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
 
+          # 2. Assemble the full text template natively with real line breaks
           read -r -d '' FULL_TEXT << EOM
           🚀 Code Update: '${FIRST_LINE}'
 
-          Check it out: ${{ inputs.commit_url }}
+          Check it out: ${COMMIT_URL}
           EOM
 
+          # 3. Construct the GraphQL validation payload
           PAYLOAD=$(jq -n \
             --arg chan "$CHANNEL_ID" \
             --arg text "$FULL_TEXT" \
@@ -45,18 +51,18 @@ jobs:
               }
             }')
 
-          # 💡 Saving the raw response to a variable instead of dropping it silently
+          # 4. Fire to Buffer and capture the real text response block
           RESPONSE=$(curl -s -X POST "https://api.buffer.com/" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $BUFFER_TOKEN" \
             -d "$PAYLOAD")
 
-          # 📢 Printing the exact text directly onto your GitHub console log!
+          # 📢 This forces the log console to show us the exact error!
           echo "==== BUFFER RESPONSE DATA ===="
           echo "$RESPONSE"
           echo "=============================="
 
-          # Gracefully exits with an error code if the payload failed
+          # 5. Gracefully exits with an error code if the payload failed
           if [[ "$RESPONSE" == *'"errors"'* || "$RESPONSE" == *'"MutationError"'* ]]; then
             exit 1
           fi
